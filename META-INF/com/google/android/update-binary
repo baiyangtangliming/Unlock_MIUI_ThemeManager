@@ -7,8 +7,8 @@ versionName=$(pm dump com.android.thememanager | grep -m 1 versionName | sed -n 
 ## 定义module.prop
 id=theme_pojie_apktool
 name="主题破解v${versionName} Auto"
-version=1.5.2_Apktool
-versionCode=210810
+version=1.5.3_Apktool
+versionCode=210811
 author=余空
 description="主题/字体xx,任意使用第三方mtz."
 
@@ -46,6 +46,7 @@ on_install() {
   chmod -R 777 /data/local/Apktool
   
   a() {
+  sleep 2
   echo "Test" > /sdcard/Android/YuKongA.txt
   if [ -e /sdcard/Android/YuKongA.txt ]; then
     if [ -e /data/data/per.pqy.openjdk ]; then
@@ -61,7 +62,7 @@ on_install() {
   }
   a
   apktool=/data/local/Apktool/apktool/apktool.sh
-  toybox=/data/local/Apktool/toybox
+  sed=/data/local/Apktool/sed
   apk=$MODPATH/Apk
   mkdir -p $apk
   if [ ! -e "/system/app/ThemeManager/ThemeManager.apk" ]; then
@@ -80,17 +81,14 @@ on_install() {
   cd $apk
   $apktool d -q -r -f -m $apk/base.apk
   Mod0=`grep -lrw "DRM_ERROR_UNKNOWN" $apk/base/smali*/com/android/thememanager/*/*/*.smali`
-  sed -i 's/DRM_ERROR_UNKNOWN/DRM_SUCCESS/g' $Mod0
-  sed -i '/OnlineResourceDetail;->bought:Z/i\    const/4 v0, 0x1' $apk/base/smali*/com/android/thememanager/module/detail/presenter/OnlineResourceDetailPresenter.smali
-  sed -i '/OnlineResourceDetail;->bought:Z/i\    return v0' $apk/base/smali*/com/android/thememanager/module/detail/presenter/OnlineResourceDetailPresenter.smali
-  sed -i '/AdInfo;->targetType:I/i\    const/4 v0, 0x0' $apk/base/smali*/com/android/thememanager/basemodule/ad/model/AdInfo.smali
-  sed -i '/AdInfo;->targetType:I/i\    return v0' $apk/base/smali*/com/android/thememanager/basemodule/ad/model/AdInfo.smali
-  Mod1=`grep -lrw ".method private static isAdValid" $apk/base/smali*/com/android/thememanager/basemodule/ad/model/AdInfoResponse.smali`
-  Vb=`grep -h ".method private static isAdValid(Lcom/android/thememanager/basemodule/ad/model/AdInfo;)Z" $Mod1`
-  Vb2="$Vb
-    const/4 p0, 0x0
-    return p0"
-  $toybox sed -i -e "s|$Vb|$Vb2|g" $Mod1
+  $sed -i 's/DRM_ERROR_UNKNOWN/DRM_SUCCESS/g' $Mod0
+  $sed -i '/OnlineResourceDetail;->bought:Z/i\    const/4 v0, 0x1' $apk/base/smali*/com/android/thememanager/module/detail/presenter/OnlineResourceDetailPresenter.smali
+  $sed -i '/OnlineResourceDetail;->bought:Z/i\    return v0' $apk/base/smali*/com/android/thememanager/module/detail/presenter/OnlineResourceDetailPresenter.smali
+  $sed -i '/AdInfo;->targetType:I/i\    const/4 v0, 0x0' $apk/base/smali*/com/android/thememanager/basemodule/ad/model/AdInfo.smali
+  $sed -i '/AdInfo;->targetType:I/i\    return v0' $apk/base/smali*/com/android/thememanager/basemodule/ad/model/AdInfo.smali
+  Mod1=$(find $apk/base/ -type f -name '*.smali' 2>/dev/null | xargs grep -rl '.method private static isAdValid' | sed 's/^\.\///' | sort)
+  $sed -i '/^.method private static isAdValid/,/^.end method/{//!d}' $Mod1
+  $sed -i -e '/^.method private static isAdValid/a\    .locals 1\n\n    const/4 p0, 0x0\n\n   return p0' $Mod1
   cd $apk
   $apktool b -q -f -c $apk/base -o base1.apk
   case "$CPU_ABI" in
