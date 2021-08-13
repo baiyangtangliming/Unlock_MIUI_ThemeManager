@@ -7,8 +7,8 @@ versionName=$(pm dump com.android.thememanager | grep -m 1 versionName | sed -n 
 ## 定义module.prop
 id=theme_pojie_apktool
 name="主题破解v${versionName} Auto"
-version=1.5.3_Apktool
-versionCode=210811
+version=1.6
+versionCode=210813
 author=余空
 description="主题/字体xx,任意使用第三方mtz."
 
@@ -16,7 +16,6 @@ Echo() {
 echo '#!/system/bin/sh
 chmod 731 /data/system/theme
 rm -rf /data/system/package_cache/*' > $TMPDIR/service.sh
-
 echo '#!/system/bin/sh
 if [ ! -e "/system/app/ThemeManager/ThemeManager.apk" ]; then
   YuK=MIUIThemeManager
@@ -34,6 +33,7 @@ rm -rf /data/system/theme/rights
 rm -rf /data/app/*/com.android.thememanager*
 rm -rf /data/app/com.android.thememanager*' > $TMPDIR/uninstall.sh
 }
+
 ## 执行模块安装
 on_install() {
   Print "________________"
@@ -44,9 +44,7 @@ on_install() {
   mkdir -p /data/local/Apktool
   unzip -p "$ZIPFILE" 'Apktool.tar.xz' | tar xJ -C /data/local/Apktool >/dev/null
   chmod -R 777 /data/local/Apktool
-  
   a() {
-  sleep 2
   echo "Test" > /sdcard/Android/YuKongA.txt
   if [ -e /sdcard/Android/YuKongA.txt ]; then
     if [ -e /data/data/per.pqy.openjdk ]; then
@@ -62,9 +60,11 @@ on_install() {
   }
   a
   apktool=/data/local/Apktool/apktool/apktool.sh
+  zipalign=/data/local/Apktool/apktool/openjdk/bin/zipalign
   sed=/data/local/Apktool/sed
+  zip=/data/local/Apktool/zip
   apk=$MODPATH/Apk
-  mkdir -p $apk
+  mkdir -p $apk/apk1
   if [ ! -e "/system/app/ThemeManager/ThemeManager.apk" ]; then
     YuK=MIUIThemeManager
   else
@@ -76,21 +76,41 @@ on_install() {
   cp -rf $Path $apk/base.apk
   mkdir -p $MODPATH/system/app/$YuK
   Print "- 开始处理$YuK.apk"
-  Print "- 这需要30秒至1分半钟"
-  Print "- 请耐心等待..."
-  cd $apk
-  $apktool d -q -r -f -m $apk/base.apk
-  Mod0=`grep -lrw "DRM_ERROR_UNKNOWN" $apk/base/smali*/com/android/thememanager/*/*/*.smali`
+  Print "- 这需要15秒以上"
+  Print "- 请耐心等待"
+  cd $apk/
+  unzip -o "$apk/base.apk" 'classes*.dex' 'lib/*' -d $apk/apk1 >/dev/null
+  cd $apk/apk1/
+  $zip -r $apk/apk_origin.apk ./* >/dev/null
+  $apktool d -q -b -r -f -m $apk/apk_origin.apk
+  Mod0=$(find $apk/apk1/apk_origin/smali*/com/android/thememanager/*/*/ -type f -name '*.smali' 2>/dev/null | xargs grep -rl 'DRM_ERROR_UNKNOWN' | sed 's/^\.\///' | sort)
   $sed -i 's/DRM_ERROR_UNKNOWN/DRM_SUCCESS/g' $Mod0
-  $sed -i '/OnlineResourceDetail;->bought:Z/i\    const/4 v0, 0x1' $apk/base/smali*/com/android/thememanager/module/detail/presenter/OnlineResourceDetailPresenter.smali
-  $sed -i '/OnlineResourceDetail;->bought:Z/i\    return v0' $apk/base/smali*/com/android/thememanager/module/detail/presenter/OnlineResourceDetailPresenter.smali
-  $sed -i '/AdInfo;->targetType:I/i\    const/4 v0, 0x0' $apk/base/smali*/com/android/thememanager/basemodule/ad/model/AdInfo.smali
-  $sed -i '/AdInfo;->targetType:I/i\    return v0' $apk/base/smali*/com/android/thememanager/basemodule/ad/model/AdInfo.smali
-  Mod1=$(find $apk/base/ -type f -name '*.smali' 2>/dev/null | xargs grep -rl '.method private static isAdValid' | sed 's/^\.\///' | sort)
-  $sed -i '/^.method private static isAdValid/,/^.end method/{//!d}' $Mod1
-  $sed -i -e '/^.method private static isAdValid/a\    .locals 1\n\n    const/4 p0, 0x0\n\n   return p0' $Mod1
-  cd $apk
-  $apktool b -q -f -c $apk/base -o base1.apk
+  mod0=${Mod0#$apk/apk1/apk_origin/smali*/}
+  mod0=${mod0%/*.smali}
+  mkdir -p $apk/apk2/smali/$mod0
+  cp -rf $Mod0 $apk/apk2/smali/$mod0
+  Mod1=$(find $apk/apk1/apk_origin/smali*/com/android/thememanager/module/detail/presenter/ -type f -name 'OnlineResourceDetailPresenter.smali' 2>/dev/null | xargs grep -rl '.method public m()Z' | sed 's/^\.\///' | sort)
+  $sed -i '/OnlineResourceDetail;->bought:Z/i\    const/4 v0, 0x1' $Mod1
+  $sed -i '/OnlineResourceDetail;->bought:Z/i\    return v0' $Mod1
+  mod1=${Mod1#$apk/apk1/apk_origin/smali*/}
+  mod1=${mod1%/*.smali}
+  mkdir -p $apk/apk2/smali/$mod1
+  cp -rf $Mod1 $apk/apk2/smali/$mod1
+  Mod2=$(find $apk/apk1/apk_origin/smali*/com/android/thememanager/basemodule/ad/model/ -type f -name 'AdInfo.smali' 2>/dev/null | xargs grep -rl '.method public isVideoAd()Z' | sed 's/^\.\///' | sort)
+  $sed -i '/^.method public isVideoAd()Z/,/^.end method/{//!d}' $Mod2
+  $sed -i -e '/^.method public isVideoAd()Z/a\    .locals 1\n\n    const/4 v0, 0x0\n\n   return v0' $Mod2
+  mod2=${Mod2#$$apk/apk1/apk_origin/smali*/}
+  mod2=${mod2%/*.smali}
+  mkdir -p $apk/apk2/smali/$mod2
+  cp -rf $Mod2 $apk/apk2/smali/$mod2
+  Mod3=$(find $apk/apk1/apk_origin/smali*/com/android/thememanager/basemodule/ad/model/ -type f -name 'AdInfoResponse.smali' 2>/dev/null | xargs grep -rl '.method private static isAdValid' | sed 's/^\.\///' | sort)
+  $sed -i '/^.method private static isAdValid/,/^.end method/{//!d}' $Mod3
+  $sed -i -e '/^.method private static isAdValid/a\    .locals 1\n\n    const/4 p0, 0x0\n\n   return p0' $Mod3
+  mod3=${Mod3#$apk/apk1/apk_origin/smali*/}
+  mod3=${mod3%/*.smali}
+  mkdir -p $apk/apk2/smali/$mod3
+  cp -rf $Mod3 $apk/apk2/smali/$mod3
+  cp -rf $apk/apk1/apk_origin/apktool.yml $apk/apk2/
   case "$CPU_ABI" in
       arm64*) Type=arm64 Wenj=arm64-v8a;;
       arm*) Type=arm Wenj=armeabi-v7a;;
@@ -98,8 +118,29 @@ on_install() {
       x86*) Type=x86 Wenj=x86;;
   esac
   mkdir -p $MODPATH/system/app/$YuK/lib/$Type
-  cp -rf $apk/base1.apk $MODPATH/system/app/$YuK/$YuK.apk
-  cp -rf $apk/base/lib/$Wenj/* $MODPATH/system/app/$YuK/lib/$Type
+  cp -rf $apk/apk1/apk_origin/lib/$Wenj/* $MODPATH/system/app/$YuK/lib/$Type
+  cd $apk/apk2/
+  $apktool b -q -f -c $apk/apk2 -o apk2.zip
+  rm -rf $apk/apk1/apk_origin
+  if [ -e $apk/apk1/classes5.dex ]; then
+  mv $apk/apk1/classes5.dex $apk/apk1/classes6.dex
+  fi
+  if [ -e $apk/apk1/classes4.dex ]; then
+  mv $apk/apk1/classes4.dex $apk/apk1/classes5.dex
+  fi
+  if [ -e $apk/apk1/classes3.dex ]; then
+  mv $apk/apk1/classes3.dex $apk/apk1/classes4.dex
+  fi
+  if [ -e $apk/apk1/classes2.dex ]; then
+  mv $apk/apk1/classes2.dex $apk/apk1/classes3.dex
+  fi
+  if [ -e $apk/apk1/classes.dex ]; then
+  mv $apk/apk1/classes.dex $apk/apk1/classes2.dex
+  fi
+  unzip -o "$apk/apk2/apk2.zip" -d $apk/apk1 >/dev/null
+  cd $apk/apk1
+  $zip -r $apk/base.apk ./* >/dev/null
+  $zipalign -v 4 $apk/base.apk $MODPATH/system/app/$YuK/$YuK.apk >/dev/null
   Print "- 处理apk完成"
   Print "- 清理无用文件"
   rm -rf $apk
@@ -164,7 +205,7 @@ mount_partitions
 api_level_arch_detect
 boot_actions
 
-Ver=$version,刷入时间:$Print_Time
+Ver=$version，$Print_Time
 echo "id=$id
 name=$name
 version=$Ver
@@ -181,7 +222,7 @@ MODID=`grep_prop id $TMPDIR/module.prop`
 MODPATH=$MODULEROOT/$MODID
 rm -rf $MODPATH 2>/dev/null
 mkdir -p $MODPATH
-cp -r $TMPDIR/* $MODPATH
+cp -rf $TMPDIR/* $MODPATH
 
 print_modname() {
   Print "- Powered By Magisk"
