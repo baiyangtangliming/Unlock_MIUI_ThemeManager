@@ -7,8 +7,8 @@ versionName=$(pm dump com.android.thememanager | grep -m 1 versionName | sed -n 
 ## 定义module.prop
 id=theme_pojie_apktool
 name="主题破解v${versionName} Auto"
-version=1.6
-versionCode=210813
+version=1.6.1
+versionCode=210824
 author=余空
 description="主题/字体xx,任意使用第三方mtz."
 
@@ -78,7 +78,7 @@ on_install() {
   Print "- 开始处理$YuK.apk"
   Print "- 这需要15秒以上"
   Print "- 请耐心等待"
-  cd $apk/
+  cd $apk
   unzip -o "$apk/base.apk" 'classes*.dex' 'lib/*' -d $apk/apk1 >/dev/null
   cd $apk/apk1/
   $zip -r $apk/apk_origin.apk ./* >/dev/null
@@ -110,7 +110,7 @@ on_install() {
   mod3=${mod3%/*.smali}
   mkdir -p $apk/apk2/smali/$mod3
   cp -rf $Mod3 $apk/apk2/smali/$mod3
-  cp -rf $apk/apk1/apk_origin/apktool.yml $apk/apk2/
+  cp -rf $apk/apk1/apk_origin/apktool.yml $apk/apk2
   case "$CPU_ABI" in
       arm64*) Type=arm64 Wenj=arm64-v8a;;
       arm*) Type=arm Wenj=armeabi-v7a;;
@@ -122,21 +122,17 @@ on_install() {
   cd $apk/apk2/
   $apktool b -q -f -c $apk/apk2 -o apk2.zip
   rm -rf $apk/apk1/apk_origin
-  if [ -e $apk/apk1/classes5.dex ]; then
-  mv $apk/apk1/classes5.dex $apk/apk1/classes6.dex
-  fi
-  if [ -e $apk/apk1/classes4.dex ]; then
-  mv $apk/apk1/classes4.dex $apk/apk1/classes5.dex
-  fi
-  if [ -e $apk/apk1/classes3.dex ]; then
-  mv $apk/apk1/classes3.dex $apk/apk1/classes4.dex
-  fi
-  if [ -e $apk/apk1/classes2.dex ]; then
-  mv $apk/apk1/classes2.dex $apk/apk1/classes3.dex
-  fi
-  if [ -e $apk/apk1/classes.dex ]; then
-  mv $apk/apk1/classes.dex $apk/apk1/classes2.dex
-  fi
+  for file in `ls -a $apk/apk1`; do
+    if [ "${file##*.}"x = "dex"x ]; then
+      old=$(echo $file | tr -d "a-zA-Z" | tr -d ".")
+      if [ -Z $old ]; then
+        old=1
+      fi
+      new=$(echo $old|awk '{for(i=1;i<=NF;i++){$i+=1}}1')
+      cp -rf $apk/apk1/$file $apk/apk2/classes$new.dex
+    fi
+  done
+  cp -rf $apk/apk2/classes*.dex $apk/apk1
   unzip -o "$apk/apk2/apk2.zip" -d $apk/apk1 >/dev/null
   cd $apk/apk1
   $zip -r $apk/base.apk ./* >/dev/null
@@ -205,7 +201,7 @@ mount_partitions
 api_level_arch_detect
 boot_actions
 
-Ver=$version，$Print_Time
+Ver="版本 $version，刷入时间 $Print_Time"
 echo "id=$id
 name=$name
 version=$Ver
